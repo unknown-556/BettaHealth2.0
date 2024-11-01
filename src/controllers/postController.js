@@ -1,7 +1,9 @@
 import User from "../models/userModel.js";
+import Application from "../models/apply.js"
 import Post from "../models/postModel.js";
 import dotenv from 'dotenv';
 import { v2 as cloudinary } from "cloudinary";
+import Application from "../models/apply.js";
 
 dotenv.config();
 
@@ -11,11 +13,18 @@ export const addArticle = async (req, res) => {
         const { image, title, description, content, categories } = req.body;
         const user = await User.findById(req.user._id);
 
-        console.log(req.body)
+        console.log(req.body);
+
+        const Author = await Application.findOne({ email: req.user.email });
+        if (!Author) {
+            return res.status(404).json({ message: 'Author not found' });
+        }
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
+
+        const authorName = `${Author.firstName} ${Author.lastName}`;
 
         if (!title || !description || !content || !categories) {
             return res.status(400).json({ error: 'All fields are required' });
@@ -37,7 +46,8 @@ export const addArticle = async (req, res) => {
         }
 
         const article = new Post({
-            postedBy: user.username || `${user.firstName} ${user.lastName}`,
+            AuthorId: Author._id,
+            postedBy: authorName,
             image: imageUrl,
             title,
             description,
@@ -52,7 +62,7 @@ export const addArticle = async (req, res) => {
                 const follower = await User.findOne({ username: followerUsername });
                 if (follower) {
                     const notification = {
-                        message: `New article posted by ${user.username || `${user.firstName} ${user.lastName}`}: ${title}`,
+                        message: `New article posted by ${user.username || authorName}: ${title}`,
                         articleId: article._id,
                     };
                     follower.notifications.push(notification);
@@ -85,25 +95,27 @@ export const addComment = async (req, res) => {
         const { text, image } = req.body;
         let imageUrl = "";
 
-        // Upload image if present
         if (image) {
-            const uploadResponse = await cloudinary.uploader.upload(image, {
-                resource_type: 'auto',
-            });
-            imageUrl = uploadResponse.secure_url;
-            console.log('Image uploaded successfully:', imageUrl);
+            try {
+                const uploadResponse = await cloudinary.uploader.upload(image, {
+                    resource_type: 'auto',
+                });
+                imageUrl = uploadResponse.secure_url;
+                console.log('Image uploaded successfully:', imageUrl);
+            } catch (error) {
+                console.error('Image upload failed:', error);
+                return res.status(500).json({ error: 'Image upload failed' });
+            }
         }
 
-        // Create the comment object
         const comment = {
             image: imageUrl,
             text,
             userId: user._id,
             postedBy: user.username || `${user.firstName} ${user.lastName}`,
-            createdAt: new Date()
+            createdAt: new Date(),
         };
 
-        // Find the article by its ID and add the comment
         const { articleId } = req.params;
         const article = await Post.findByIdAndUpdate(
             articleId,
@@ -115,25 +127,28 @@ export const addComment = async (req, res) => {
             return res.status(404).json({ message: 'Article not found' });
         }
 
-        // Find the article's author using the postedBy field
-        const author = await User.findOne({ username: article.postedBy });
-        if (author) {
-            const notification = {
-                message: `${user.username} commented on your article: ${article.title}`,
-                createdAt: new Date(),
-                read: false
-            };
-            author.notifications.push(notification);
-            await author.save();
+        const application = await Application.findById(article.AuthorId);
+        if (application) {
+            const author = await User.findOne({ email: application.email });
+            if (author) {
+                const notification = {
+                    message: `${user.username || `${user.firstName} ${user.lastName}`} commented on your article: ${article.title}`,
+                    createdAt: new Date(),
+                    read: false,
+                };
+                author.notifications.push(notification);
+                await author.save();
+            }
         }
 
         console.log({ message: 'Comment added successfully', article });
         res.status(201).json({ message: 'Comment added successfully', article });
     } catch (error) {
         console.error('Error adding comment:', error);
-        res.status(500).send({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 
 
 export const replyToComment = async (req, res) => {

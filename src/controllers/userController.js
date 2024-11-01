@@ -1,7 +1,8 @@
-import mongoose from "mongoose";
+
 import User from "../models/userModel.js";
 import Post from "../models/postModel.js";
 import {v2 as cloudinary} from 'cloudinary'
+import Application from "../models/apply.js";
 
 
 
@@ -24,14 +25,14 @@ export const getUserById = async (req, res) => {
 
 export const getAuthor = async (req, res) => {
     try {
-        const { username } = req.params; 
-        const user = await User.findOne({ username: username }).select('-password');
+        const { Id } = req.params; 
+        const author = await Application.findById(Id).select('-password');
 
-        if (!user) {
-            return res.status(404).json({ message: `No user with ID ${userId} found` });
+        if (!author) {
+            return res.status(404).json({ message: `No user with ID ${Id} found` });
         }
 
-        res.status(200).json({ message: 'User found successfully', user });
+        res.status(200).json({ message: 'User found successfully', author });
     } catch (error) {
         console.error('Error while getting user:', error);
         res.status(500).json({ message: 'Internal server error' });
@@ -57,18 +58,21 @@ export const getUser = async (req, res) => {
 
 export const myArticles = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
-        const author = `${user.username}`
-        console.log(author)
+        const author = await Application.findOne({ email: req.user.email });
+        
+        if (!author) {
+            return res.status(404).json({ message: 'Author not found' });
+        }
 
+        const authorId = author._id;
+        console.log(authorId);
 
-        const posts = await Post.find({ postedBy: author }).sort({ createdAt: -1 });
+        const posts = await Post.find({ AuthorId: authorId }).sort({ createdAt: -1 });
+        console.log(posts);
 
-        console.log(posts)
-
-        // if (posts.length === 0) {
-        //     return res.status(404).json({ message: 'No posts found for this user' });
-        // }
+        if (posts.length === 0) {
+            return res.status(404).json({ message: 'No posts found for this user' });
+        }
 
         res.status(200).json({ message: 'Posts fetched successfully', posts });
     } catch (error) {

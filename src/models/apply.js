@@ -1,21 +1,34 @@
 import mongoose from "mongoose";
+
 const { ObjectId } = mongoose.Schema.Types;
 
+const degreeSchema = new mongoose.Schema({
+  course: {
+    type: String,
+  },
+  degree: {
+    type: String,
+  },
+  institution: {
+    type: String,
+  },
+  year: {
+    type: String,
+  },
+});
 
 const dataSchema = new mongoose.Schema({
   firstName: {
     type: String,
-    ref: "User",
     required: true,
   },
   lastName: {
     type: String,
-    ref: "User",
     required: true,
   },
   dateOfBirth: {
     type: String,
-  },  
+  },
   gender: {
     type: String,
   },
@@ -24,9 +37,8 @@ const dataSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    ref: "User",
     required: true,
-  },  
+  },
   country: {
     type: String,
   },
@@ -53,20 +65,7 @@ const dataSchema = new mongoose.Schema({
   medicalSchool: {
     type: String,
   },
-  degreeObtained: [{
-    course: {
-      type: String,
-    },
-    degree: {
-      type: String,
-    },
-    institution: {
-      type: String,
-    },
-    year: {
-      type: String,
-    },
-  }],
+  degreeObtained: [degreeSchema], 
   yearOfGraduation: {
     type: String,
   },

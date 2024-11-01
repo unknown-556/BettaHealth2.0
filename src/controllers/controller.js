@@ -13,54 +13,62 @@ export const apply = async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
 
-            const email = await User.findOne({ email: req.user.email });
+        const email = await User.findOne({ email: req.user.email });
+        if (!email) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-            if (!email) {
-                return res.status(404).json({ message: 'User not found' });
-            }
+        const existingProfile = await Application.findOne({ email: req.user.email });
+        if (existingProfile) {
+            return res.status(400).json({ message: 'You already have a profile' });
+        }
 
-            const existingProfile = await Application.findOne({ email: req.user.email });
+        let profilePictureUrl = "";
+        let jobType = "";
 
-
-            if (existingProfile) {
-                return res.status(400).json({ message: 'You already have a profile' });
-            }
-
-            let profilePictureUrl = "";
-            let jobType = "";
-
-            if (profilePictureUrl) {
-                const uploadResponse = await cloudinary.uploader.upload(image, {
+        if (req.body.image) {
+            try {
+                const uploadResponse = await cloudinary.uploader.upload(req.body.image, {
                     resource_type: 'auto',
                 });
                 profilePictureUrl = uploadResponse.secure_url;
-                console.log('Image uploaded successfully:', profilePictureUrl);
+                console.log('Profile picture uploaded successfully:', profilePictureUrl);
+            } catch (uploadError) {
+                console.error('Profile picture upload failed:', uploadError);
+                return res.status(500).json({ message: 'Profile picture upload failed' });
             }
+        }
 
-            if (jobType) {
-                const uploadResponse = await cloudinary.uploader.upload(image, {
+        if (req.body.jobImage) {
+            try {
+                const uploadResponse = await cloudinary.uploader.upload(req.body.jobImage, {
                     resource_type: 'auto',
                 });
                 jobType = uploadResponse.secure_url;
-                console.log('Image uploaded successfully:', jobType);
+                console.log('Job type image uploaded successfully:', jobType);
+            } catch (uploadError) {
+                console.error('Job type image upload failed:', uploadError);
+                return res.status(500).json({ message: 'Job type image upload failed' });
             }
+        }
 
-
-            const application = new Application({
-                ...req.body,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                profilePictureUrl: profilePictureUrl,
-                jobType: jobType,
-            });
+        const application = new Application({
+            ...req.body,
+            profilePictureUrl,
+            jobType,
+        });
 
         await application.save();
 
         user.role = 'Writer';
 
-        console.log({ message: 'Application submitted successfully.', application });
-        return res.status(201).json({ message: 'Application submitted successfully.', application });
+        user.email = application.email
+
+        console.log('Application submitted successfully:', application);
+        return res.status(201).json({
+            message: `Your login email is now ${application.email}. Application submitted successfully.`,
+            application,
+        });
     } catch (error) {
         console.error('Error submitting application:', error);
         res.status(500).json({ message: 'Internal server error.' });

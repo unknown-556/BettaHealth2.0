@@ -1,17 +1,61 @@
 import mongoose from "mongoose";
 
-const articleSchema = new mongoose.Schema({
-  _id: {
+const commentSchema = new mongoose.Schema({
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
-    auto: true,
+    ref: "User",
+    required: true,
+  },
+  postedBy: {
+    type: String,
+    required: true,
+  },
+  text: {
+    type: String,
+    required: true,
+  },
+  image: {
+    type: String,
+    default: '',
   },
   createdAt: {
     type: Date,
     default: Date.now,
   },
-  postedBy: {
-    type: String,
-    ref: 'User',
+  reply: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      postedBy: {
+        type: String,
+        required: true,
+      },
+      text: {
+        type: String,
+        required: true,
+      },
+      image: {
+        type: String,
+        default: '',
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }
+  ]
+});
+
+const articleSchema = new mongoose.Schema({
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  AuthorId: {
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
   },
   title: {
@@ -30,53 +74,11 @@ const articleSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
-  categories: [String],
-  comments: [
-    {
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-      },
-      postedBy: {
-        type: String,
-      },
-      text: {
-        type: String,
-        required: true,
-      },
-      image: {
-        type: String,
-        default: '', 
-      },
-      createdAt: {
-        type: Date,
-        default: Date.now,
-      },
-      reply: [
-        {
-          userId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
-          },
-          postedBy: {
-            type: String,
-          },
-          text: {
-            type: String,
-          },
-          image: {
-            type: String,
-          },
-          createdAt: {
-            type: Date,
-            default: Date.now,
-          },
-        }
-      ]
-    },
-  ],
+  categories: {
+    type: [String],
+    default: [],
+  },
+  comments: [commentSchema],
   viewCount: {
     type: Number,
     default: 0,
